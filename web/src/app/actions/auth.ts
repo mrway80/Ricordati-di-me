@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signUpSchema, signInSchema, type SignUpInput, type SignInInput } from "@/validations/auth";
 import { ActionResult } from "@/types";
 
-// Error types
-class AuthError extends Error {
-  constructor(public code: string, message: string) {
-    super(message);
-    this.name = "AuthError";
-  }
-}
+// Error types removed — auth errors are returned directly
 
 /**
  * Sign up a new user with email/password
@@ -34,24 +28,6 @@ export async function signUp(input: SignUpInput): Promise<ActionResult<{ userId:
 
     const supabase = await createClient();
 
-    // Check if email already exists
-    const { data: existingUser } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", result.data.email)
-      .single();
-
-    if (existingUser) {
-      return {
-        success: false,
-        error: {
-          code: "EMAIL_EXISTS",
-          message: "Un account con questa email esiste già",
-        },
-      };
-    }
-
-    // Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: result.data.email,
       password: result.data.password,
@@ -64,7 +40,16 @@ export async function signUp(input: SignUpInput): Promise<ActionResult<{ userId:
     });
 
     if (authError) {
-      throw new AuthError(authError.status?.toString() ?? "AUTH_ERROR", authError.message);
+      const message =
+        authError.message.toLowerCase().includes("already registered") ||
+        authError.message.toLowerCase().includes("already exists")
+          ? "Un account con questa email esiste già"
+          : authError.message;
+
+      return {
+        success: false,
+        error: { code: "AUTH_ERROR", message },
+      };
     }
 
     if (!authData.user) {
@@ -74,56 +59,12 @@ export async function signUp(input: SignUpInput): Promise<ActionResult<{ userId:
       };
     }
 
-    // Profile is created automatically via database trigger
-    // Update profile with additional data
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        full_name: result.data.fullName,
-        display_name: result.data.displayName || result.data.fullName,
-        language: "it",
-        timezone: "Europe/Rome",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", authData.user.id);
-
-    if (profileError) {
-      console.error("Profile update error:", profileError);
-    }
-
-    // Insert default preferences
-    await supabase.from("user_preferences").insert({
-      profile_id: authData.user.id,
-    });
-
-    // Insert consent record
-    await supabase.from("user_consents").insert({
-      profile_id: authData.user.id,
-      terms_accepted: true,
-      terms_version: "1.0",
-      privacy_accepted: true,
-      privacy_version: "1.0",
-    });
-
-    // Audit log
-    await supabase.from("audit_events").insert({
-      actor_id: authData.user.id,
-      actor_type: "user",
-      action: "user_registered",
-      resource_type: "profile",
-      resource_id: authData.user.id,
-      metadata: { email: result.data.email },
-    });
-
     return {
       success: true,
       data: { userId: authData.user.id },
     };
   } catch (error) {
     console.error("SignUp error:", error);
-    if (error instanceof AuthError) {
-      return { success: false, error: { code: error.code, message: error.message } };
-    }
     return {
       success: false,
       error: { code: "INTERNAL_ERROR", message: "Si è verificato un errore imprevisto" },
@@ -168,12 +109,6 @@ export async function signIn(input: SignInInput): Promise<ActionResult<{ userId:
         error: { code: "AUTH_FAILED", message: "Autenticazione fallita" },
       };
     }
-
-    // Update last sign in
-    await supabase
-      .from("profiles")
-      .update({ last_sign_in_at: new Date().toISOString() })
-      .eq("id", data.user.id);
 
     return {
       success: true,

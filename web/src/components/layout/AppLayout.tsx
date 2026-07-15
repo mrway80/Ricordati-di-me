@@ -14,8 +14,8 @@ export async function AppLayout({ children, showFooter = true }: AppLayoutProps)
     ? {
         id: userData.user.id,
         email: userData.user.email ?? "",
-        fullName: userData.profile?.full_name ?? null,
-        displayName: userData.profile?.display_name ?? null,
+        fullName: (userData.profile?.display_name as string | null) ?? null,
+        displayName: (userData.profile?.display_name as string | null) ?? null,
         avatarUrl: userData.profile?.avatar_url ?? null,
       }
     : null;
