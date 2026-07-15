@@ -23,12 +23,15 @@ export async function createMemorial(
     // Validate
     const result = createMemorialSchema.safeParse(input);
     if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      const firstMessage =
+        Object.values(fieldErrors).flat().find(Boolean) ?? "Dati non validi";
       return {
         success: false,
         error: {
           code: "VALIDATION_ERROR",
-          message: "Dati non validi",
-          details: result.error.flatten().fieldErrors,
+          message: firstMessage,
+          details: fieldErrors,
         },
       };
     }
@@ -50,8 +53,18 @@ export async function createMemorial(
 
     const data = result.data;
 
+    // Normalize optional blank form fields
+    const birthDate = data.birthDate?.trim() || undefined;
+    const deathDate = data.deathDate?.trim() || undefined;
+    const nickname = data.nickname?.trim() || undefined;
+    const birthPlace = data.birthPlace?.trim() || undefined;
+    const deathPlace = data.deathPlace?.trim() || undefined;
+    const biography = data.biography?.trim() || undefined;
+    const guardianRelationshipDescription =
+      data.guardianRelationshipDescription?.trim() || undefined;
+
     // Generate unique slug
-    const birthYear = data.birthDate ? data.birthDate.split("-")[0] : null;
+    const birthYear = birthDate ? birthDate.split("-")[0] : null;
     const baseSlug = generateMemorialSlug(data.firstName, data.lastName, birthYear);
 
     // Check slug uniqueness
@@ -82,9 +95,9 @@ export async function createMemorial(
       .insert({
         slug,
         full_name: fullName,
-        birth_date: data.birthDate || null,
-        death_date: data.deathDate || null,
-        biography: data.biography || null,
+        birth_date: birthDate || null,
+        death_date: deathDate || null,
+        biography: biography || null,
         visibility: data.visibility,
         status: "active",
         created_by: user.id,
@@ -92,11 +105,11 @@ export async function createMemorial(
         settings: {
           first_name: data.firstName,
           last_name: data.lastName,
-          nickname: data.nickname || null,
-          birth_place: data.birthPlace || null,
-          death_place: data.deathPlace || null,
+          nickname: nickname || null,
+          birth_place: birthPlace || null,
+          death_place: deathPlace || null,
           guardian_relationship: data.guardianRelationship,
-          guardian_relationship_description: data.guardianRelationshipDescription || null,
+          guardian_relationship_description: guardianRelationshipDescription || null,
           publication_mode: "strict_review",
           allow_comments: true,
           allow_reactions: true,

@@ -159,17 +159,16 @@ COMMENT ON FUNCTION has_memorial_permission(uuid, uuid, text) IS
 CREATE OR REPLACE FUNCTION memorials_search_vector_update()
 RETURNS TRIGGER AS $$
 DECLARE
-  cfg regconfig := 'italian';
+  cfg_name text := 'italian';
 BEGIN
   -- Fallback a 'simple' se 'italian' non e disponibile
-  PERFORM 1 FROM pg_ts_config WHERE cfgname = cfg;
-  IF NOT FOUND THEN
-    cfg := 'simple';
+  IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = cfg_name) THEN
+    cfg_name := 'simple';
   END IF;
 
   NEW.search_vector :=
-    setweight(to_tsvector(cfg, COALESCE(NEW.full_name, '')), 'A') ||
-    setweight(to_tsvector(cfg, COALESCE(NEW.biography, '')), 'B');
+    setweight(to_tsvector(cfg_name::regconfig, COALESCE(NEW.full_name, '')), 'A') ||
+    setweight(to_tsvector(cfg_name::regconfig, COALESCE(NEW.biography, '')), 'B');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -178,16 +177,15 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION posts_search_vector_update()
 RETURNS TRIGGER AS $$
 DECLARE
-  cfg regconfig := 'italian';
+  cfg_name text := 'italian';
 BEGIN
-  PERFORM 1 FROM pg_ts_config WHERE cfgname = cfg;
-  IF NOT FOUND THEN
-    cfg := 'simple';
+  IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = cfg_name) THEN
+    cfg_name := 'simple';
   END IF;
 
   NEW.search_vector :=
-    setweight(to_tsvector(cfg, COALESCE(NEW.title, '')), 'A') ||
-    setweight(to_tsvector(cfg, COALESCE(NEW.content, '')), 'B');
+    setweight(to_tsvector(cfg_name::regconfig, COALESCE(NEW.title, '')), 'A') ||
+    setweight(to_tsvector(cfg_name::regconfig, COALESCE(NEW.content, '')), 'B');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

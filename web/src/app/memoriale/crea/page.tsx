@@ -9,13 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createMemorial } from "@/app/actions/memorial";
@@ -219,27 +212,27 @@ export default function CreateMemorialPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="guardianRelationship">Tipo di legame *</Label>
-                <Select
+                <select
+                  id="guardianRelationship"
+                  name="guardianRelationship"
+                  required
                   value={guardianRelationship}
-                  onValueChange={(value) => {
-                    if (value != null) setGuardianRelationship(String(value));
-                  }}
+                  onChange={(e) => setGuardianRelationship(e.target.value)}
+                  className={`flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 ${
+                    fieldErrors.guardianRelationship ? "border-error" : ""
+                  }`}
                 >
-                  <SelectTrigger className={fieldErrors.guardianRelationship ? "border-error" : ""}>
-                    <SelectValue placeholder="Seleziona il tuo legame" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="figlio">Figlio/Figlia</SelectItem>
-                    <SelectItem value="coniuge">Coniuge</SelectItem>
-                    <SelectItem value="genitore">Genitore</SelectItem>
-                    <SelectItem value="fratello">Fratello/Sorella</SelectItem>
-                    <SelectItem value="nipote">Nipote</SelectItem>
-                    <SelectItem value="cugino">Cugino/Cugina</SelectItem>
-                    <SelectItem value="amico">Amico/Amica</SelectItem>
-                    <SelectItem value="collega">Collega</SelectItem>
-                    <SelectItem value="altro">Altro</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="">Seleziona il tuo legame</option>
+                  <option value="figlio">Figlio/Figlia</option>
+                  <option value="coniuge">Coniuge</option>
+                  <option value="genitore">Genitore</option>
+                  <option value="fratello">Fratello/Sorella</option>
+                  <option value="nipote">Nipote</option>
+                  <option value="cugino">Cugino/Cugina</option>
+                  <option value="amico">Amico/Amica</option>
+                  <option value="collega">Collega</option>
+                  <option value="altro">Altro</option>
+                </select>
                 {fieldErrors.guardianRelationship && (
                   <p className="text-xs text-error">{fieldErrors.guardianRelationship[0]}</p>
                 )}
@@ -282,33 +275,21 @@ export default function CreateMemorialPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <Select
+                <select
+                  id="visibility"
+                  name="visibility"
                   value={visibility}
-                  onValueChange={(value) => {
-                    if (
-                      value === "public" ||
-                      value === "private" ||
-                      value === "invitation_only"
-                    ) {
-                      setVisibility(value);
-                    }
-                  }}
+                  onChange={(e) =>
+                    setVisibility(
+                      e.target.value as "public" | "private" | "invitation_only"
+                    )
+                  }
+                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="public">
-                      Pubblico — Chiunque può visualizzare
-                    </SelectItem>
-                    <SelectItem value="invitation_only">
-                      Su invito — Solo chi riceve un invito
-                    </SelectItem>
-                    <SelectItem value="private">
-                      Privato — Solo membri approvati
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="public">Pubblico — Chiunque può visualizzare</option>
+                  <option value="invitation_only">Su invito — Solo chi riceve un invito</option>
+                  <option value="private">Privato — Solo membri approvati</option>
+                </select>
               </div>
             </section>
 

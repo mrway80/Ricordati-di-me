@@ -15,24 +15,43 @@ export const createMemorialSchema = z.object({
     .string()
     .max(100, "Il soprannome non può superare 100 caratteri")
     .trim()
-    .optional(),
-  birthDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato data non valido (YYYY-MM-DD)")
-    .optional(),
-  birthPlace: z.string().max(200).trim().optional(),
-  deathDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato data non valido (YYYY-MM-DD)")
-    .optional(),
-  deathPlace: z.string().max(200).trim().optional(),
-  biography: z.string().max(10000, "La biografia non può superare 10000 caratteri").optional(),
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
+  birthDate: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato data non valido (YYYY-MM-DD)")
+      .optional()
+  ),
+  birthPlace: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.string().max(200).trim().optional()
+  ),
+  deathDate: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato data non valido (YYYY-MM-DD)")
+      .optional()
+  ),
+  deathPlace: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.string().max(200).trim().optional()
+  ),
+  biography: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.string().max(10000, "La biografia non può superare 10000 caratteri").optional()
+  ),
   visibility: z.enum(["public", "private", "invitation_only"]).default("public"),
   guardianRelationship: z
     .string()
     .min(1, "Indica il tuo legame con la persona")
     .max(100),
-  guardianRelationshipDescription: z.string().max(500).optional(),
+  guardianRelationshipDescription: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.string().max(500).optional()
+  ),
 });
 
 export type CreateMemorialInput = z.infer<typeof createMemorialSchema>;
