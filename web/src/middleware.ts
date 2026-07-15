@@ -28,43 +28,47 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options });
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: "", ...options });
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
-          response.cookies.set({ name, value: "", ...options });
-        },
+  const { pathname } = request.nextUrl;
+
+  // Check if route is always accessible early
+  if (alwaysAccessible.some((route) => pathname.startsWith(route))) {
+    return response;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  // Without Supabase env vars, skip auth middleware so the site still loads
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return response;
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get(name: string) {
+        return request.cookies.get(name)?.value;
       },
-    }
-  );
+      set(name: string, value: string, options: CookieOptions) {
+        request.cookies.set({ name, value, ...options });
+        response = NextResponse.next({
+          request: { headers: request.headers },
+        });
+        response.cookies.set({ name, value, ...options });
+      },
+      remove(name: string, options: CookieOptions) {
+        request.cookies.set({ name, value: "", ...options });
+        response = NextResponse.next({
+          request: { headers: request.headers },
+        });
+        response.cookies.set({ name, value: "", ...options });
+      },
+    },
+  });
 
   // Refresh session if it exists
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
-
-  // Check if route is always accessible
-  if (alwaysAccessible.some((route) => pathname.startsWith(route))) {
-    return response;
-  }
 
   // Check if route requires authentication
   const isProtectedRoute = protectedRoutes.some(
