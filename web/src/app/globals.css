@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Design System Tokens — Ricordati di Te */
+    --background: 30 38% 97%;
+    --foreground: 24 14% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 24 14% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 14% 14%;
+    --primary: 30 53% 50%;
+    --primary-foreground: 30 38% 97%;
+    --secondary: 97 12% 49%;
+    --secondary-foreground: 30 38% 97%;
+    --muted: 30 25% 93%;
+    --muted-foreground: 24 10% 42%;
+    --accent: 18 35% 54%;
+    --accent-foreground: 30 38% 97%;
+    --destructive: 0 40% 54%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 22% 87%;
+    --input: 30 22% 87%;
+    --ring: 30 53% 50%;
+    --radius: 0.5rem;
+
+    /* Sidebar tokens */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Focus visible styles for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+}
+
+@layer components {
+  /* Memorial card styles */
+  .memorial-card {
+    @apply bg-white rounded-xl border border-border shadow-soft transition-shadow duration-300;
+  }
+  .memorial-card:hover {
+    @apply shadow-medium;
+  }
+
+  /* Content section */
+  .content-section {
+    @apply w-full px-4 sm:px-6 lg:px-8 xl:px-12;
+  }
+  .content-section > * {
+    @apply max-w-7xl mx-auto;
+  }
+
+  /* Upload zone */
+  .upload-zone {
+    @apply border-2 border-dashed border-border rounded-xl p-8 text-center transition-colors duration-200 cursor-pointer;
+    @apply hover:border-primary/50 hover:bg-primary/[0.02];
+  }
+  .upload-zone.dragover {
+    @apply border-primary bg-primary/[0.04];
+  }
+
+  /* Guardian badge */
+  .guardian-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold;
+    @apply bg-primary/10 text-primary-700 border border-primary/20;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
