@@ -20,6 +20,7 @@ import { listMemorialPosts } from "@/app/actions/post";
 import { listMemorialMedia } from "@/app/actions/media";
 import { createClient } from "@/lib/supabase/server";
 import { calculateAge, formatDate } from "@/lib/utils";
+import { MemorialOnboarding } from "@/components/memorial/MemorialOnboarding";
 import MemorialFeed from "./MemorialFeed";
 import MediaGallery from "./MediaGallery";
 import SupportWall from "./SupportWall";
@@ -29,18 +30,18 @@ import ApprovalQueue from "./ApprovalQueue";
 
 interface MemorialPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ onboarding?: string; tab?: string }>;
 }
 
-export default async function MemorialPage({ params }: MemorialPageProps) {
+export default async function MemorialPage({ params, searchParams }: MemorialPageProps) {
   const { slug } = await params;
+  const query = await searchParams;
 
-  // Get current user
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch memorial
   const result = await getMemorialBySlug(slug);
 
   if (!result.success || !result.data) {
@@ -55,11 +56,9 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
     notFound();
   }
 
-  // Check guardian status
   const guardianResult = await checkGuardianStatus(memorial.id);
   const isGuardian = guardianResult.success ? guardianResult.data?.isGuardian ?? false : false;
 
-  // Fetch posts and media in parallel
   const statusFilter: string | undefined = isGuardian ? undefined : "published";
   const mediaStatusFilter: string | undefined = isGuardian ? undefined : "approved";
 
@@ -74,7 +73,6 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
   const posts = postsResult.success ? postsResult.data?.items ?? [] : [];
   const media = mediaResult.success ? mediaResult.data?.items ?? [] : [];
 
-  // Get pending content for approval queue
   const pendingPosts: Array<Record<string, unknown>> = [];
   const pendingMedia: Array<Record<string, unknown>> = [];
 
@@ -84,10 +82,18 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
       listMemorialMedia(memorial.id, { status: "processing" }),
     ]);
     if (pendingPostsResult.success) {
-      pendingPosts.push(...(pendingPostsResult.data?.items ?? []).map((p) => p as unknown as Record<string, unknown>));
+      pendingPosts.push(
+        ...(pendingPostsResult.data?.items ?? []).map(
+          (p) => p as unknown as Record<string, unknown>
+        )
+      );
     }
     if (pendingMediaResult.success) {
-      pendingMedia.push(...(pendingMediaResult.data?.items ?? []).map((m) => m as unknown as Record<string, unknown>));
+      pendingMedia.push(
+        ...(pendingMediaResult.data?.items ?? []).map(
+          (m) => m as unknown as Record<string, unknown>
+        )
+      );
     }
   }
 
@@ -100,10 +106,11 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
       ? calculateAge(memorial.birthDate, memorial.deathDate)
       : null;
 
+  const defaultTab = query.tab === "foto" ? "foto" : "feed";
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Cover Photo */}
-      <div className="relative w-full h-48 sm:h-64 lg:h-80 bg-gradient-to-b from-primary/20 to-primary/5 overflow-hidden">
+      <div className="relative w-full h-40 sm:h-64 lg:h-80 bg-gradient-to-b from-primary/20 to-primary/5 overflow-hidden">
         {memorial.coverPhotoUrl ? (
           <img
             src={memorial.coverPhotoUrl}
@@ -114,9 +121,9 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
           <div className="w-full h-full bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10" />
         )}
         {isGuardian && (
-          <div className="absolute top-4 right-4">
-            <Button size="sm" variant="secondary" className="bg-white/90 backdrop-blur-sm" >
-              <Link href={`/memoriale/${slug}/impostazioni`}>
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+            <Button size="sm" variant="secondary" className="bg-white/90 backdrop-blur-sm min-h-10">
+              <Link href={`/memoriale/${slug}/completa`}>
                 <Settings className="mr-1.5 h-4 w-4" />
                 Gestisci
               </Link>
@@ -125,36 +132,33 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
         )}
       </div>
 
-      <div className="content-section -mt-16 sm:-mt-20 relative z-10 pb-16">
+      <div className="content-section -mt-14 sm:-mt-20 relative z-10 pb-16 px-4">
         <div className="max-w-4xl mx-auto">
-          {/* Profile Header */}
-          <div className="flex flex-col sm:flex-row items-start gap-6 mb-8">
-            {/* Profile Photo */}
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 mb-6 sm:mb-8">
             <div className="flex-shrink-0">
               {memorial.mainPhotoUrl ? (
                 <img
                   src={memorial.mainPhotoUrl}
                   alt={displayName}
-                  className="h-28 w-28 sm:h-36 sm:w-36 rounded-2xl object-cover ring-4 ring-background shadow-lifted"
+                  className="h-24 w-24 sm:h-36 sm:w-36 rounded-2xl object-cover ring-4 ring-background shadow-lifted"
                 />
               ) : (
-                <div className="h-28 w-28 sm:h-36 sm:w-36 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-display text-4xl font-semibold ring-4 ring-background shadow-lifted">
+                <div className="h-24 w-24 sm:h-36 sm:w-36 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-display text-3xl sm:text-4xl font-semibold ring-4 ring-background shadow-lifted">
                   {memorial.firstName.charAt(0)}
                   {memorial.lastName.charAt(0)}
                 </div>
               )}
             </div>
 
-            {/* Info */}
-            <div className="flex-1 min-w-0 pt-2">
+            <div className="flex-1 min-w-0 pt-1 sm:pt-2">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h1 className="font-display text-2xl sm:text-3xl font-semibold">{displayName}</h1>
+                <h1 className="font-display text-xl sm:text-3xl font-semibold">{displayName}</h1>
                 <Badge variant="secondary" className="capitalize text-xs">
                   {memorial.visibility === "public"
                     ? "Pubblico"
                     : memorial.visibility === "private"
-                    ? "Privato"
-                    : "Su invito"}
+                      ? "Privato"
+                      : "Su invito"}
                 </Badge>
               </div>
 
@@ -189,7 +193,6 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
                 </div>
               )}
 
-              {/* Guardian Info */}
               {memorial.guardian && (
                 <div className="flex items-center gap-2 mt-3 text-sm">
                   <Shield className="h-4 w-4 text-primary" />
@@ -208,8 +211,7 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
                 </div>
               )}
 
-              {/* Stats */}
-              <div className="flex flex-wrap items-center gap-4 mt-4">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-4">
                 <StatBadge
                   icon={<Users className="h-4 w-4" />}
                   value={memorial.stats?.memberCount ?? 0}
@@ -234,10 +236,23 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
             </div>
           </div>
 
-          {/* Biography */}
+          {isGuardian && (
+            <MemorialOnboarding
+              slug={slug}
+              forceShow={query.onboarding === "1"}
+              gaps={{
+                missingPhoto: !memorial.mainPhotoUrl,
+                missingDates: !memorial.birthDate || !memorial.deathDate,
+                missingBio: !memorial.biography,
+                missingInvite: (memorial.stats?.memberCount ?? 0) < 1,
+              }}
+              locale="it"
+            />
+          )}
+
           {memorial.biography && (
             <Card className="mb-8 bg-white">
-              <CardContent className="p-6">
+              <CardContent className="p-5 sm:p-6">
                 <h2 className="font-display text-lg font-semibold mb-3">Biografia</h2>
                 <div className="prose prose-stone max-w-none text-foreground-muted leading-relaxed whitespace-pre-wrap">
                   {memorial.biography}
@@ -246,7 +261,6 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
             </Card>
           )}
 
-          {/* Approval Queue (guardian only) */}
           {isGuardian && (pendingPosts.length > 0 || pendingMedia.length > 0) && (
             <div className="mb-8">
               <ApprovalQueue
@@ -258,15 +272,14 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 mb-8">
+          <div className="flex flex-wrap gap-2 sm:gap-3 mb-6 sm:mb-8">
             {user && (
               <>
                 <CreatePostButton memorialId={memorial.id} />
                 <UploadMediaButton memorialId={memorial.id} />
               </>
             )}
-            <Button variant="outline" size="sm" >
+            <Button variant="outline" size="sm" className="min-h-10">
               <Link href={`/memoriale/${slug}/membri`}>
                 <Users className="mr-1.5 h-4 w-4" />
                 Persone
@@ -274,20 +287,20 @@ export default async function MemorialPage({ params }: MemorialPageProps) {
             </Button>
           </div>
 
-          {/* Content Tabs */}
-          <Tabs defaultValue="feed" className="space-y-6">
-            <TabsList className="bg-white border">
-              <TabsTrigger value="feed" className="gap-1.5">
+          <Tabs defaultValue={defaultTab} className="space-y-6">
+            <TabsList className="bg-white border w-full sm:w-auto justify-start overflow-x-auto">
+              <TabsTrigger value="feed" className="gap-1.5 min-h-10">
                 <FileText className="h-4 w-4" />
                 Ricordi
               </TabsTrigger>
-              <TabsTrigger value="foto" className="gap-1.5">
+              <TabsTrigger value="foto" className="gap-1.5 min-h-10">
                 <ImageIcon className="h-4 w-4" />
                 Foto
               </TabsTrigger>
-              <TabsTrigger value="vicinanza" className="gap-1.5">
+              <TabsTrigger value="vicinanza" className="gap-1.5 min-h-10">
                 <MessageCircle className="h-4 w-4" />
-                Messaggi di vicinanza
+                <span className="hidden sm:inline">Messaggi di vicinanza</span>
+                <span className="sm:hidden">Vicinanza</span>
               </TabsTrigger>
             </TabsList>
 
@@ -319,7 +332,7 @@ function StatBadge({
   label: string;
 }) {
   return (
-    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-sm">
+    <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-muted text-xs sm:text-sm">
       <span className="text-foreground-subtle">{icon}</span>
       <span className="font-medium">{value}</span>
       <span className="text-foreground-subtle">{label}</span>

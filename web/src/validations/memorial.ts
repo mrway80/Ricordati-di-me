@@ -11,12 +11,10 @@ export const createMemorialSchema = z.object({
     .min(1, "Il cognome è obbligatorio")
     .max(100, "Il cognome non può superare 100 caratteri")
     .trim(),
-  nickname: z
-    .string()
-    .max(100, "Il soprannome non può superare 100 caratteri")
-    .trim()
-    .optional()
-    .transform((v) => (v === "" ? undefined : v)),
+  nickname: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.string().max(100, "Il soprannome non può superare 100 caratteri").trim().optional()
+  ),
   birthDate: z.preprocess(
     (v) => (v === "" || v === null ? undefined : v),
     z

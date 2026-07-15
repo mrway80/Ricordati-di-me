@@ -475,7 +475,7 @@ export async function updateMemorial(
       };
     }
 
-    // Check if user is guardian
+    // Check if user is guardian (table row OR creator/primary)
     const { data: guardian } = await supabase
       .from("memorial_guardians")
       .select("id")
@@ -483,7 +483,20 @@ export async function updateMemorial(
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!guardian) {
+    let canEdit = !!guardian;
+    if (!canEdit) {
+      const { data: memorialRow } = await supabase
+        .from("memorials")
+        .select("created_by, primary_guardian_id")
+        .eq("id", result.data.id)
+        .maybeSingle();
+      canEdit = !!(
+        memorialRow &&
+        (memorialRow.created_by === user.id || memorialRow.primary_guardian_id === user.id)
+      );
+    }
+
+    if (!canEdit) {
       return {
         success: false,
         error: { code: "FORBIDDEN", message: "Solo il custode può modificare il memoriale" },
