@@ -74,23 +74,36 @@ export async function createMemorial(
       }
     }
 
-    // Create memorial
+    const fullName = `${data.firstName} ${data.lastName}`.trim();
+
+    // Create memorial (columns must match public.memorials schema)
     const { data: memorial, error: insertError } = await supabase
       .from("memorials")
       .insert({
         slug,
-        first_name: data.firstName,
-        last_name: data.lastName,
-        nickname: data.nickname || null,
+        full_name: fullName,
         birth_date: data.birthDate || null,
-        birth_place: data.birthPlace || null,
         death_date: data.deathDate || null,
-        death_place: data.deathPlace || null,
         biography: data.biography || null,
         visibility: data.visibility,
         status: "active",
-        publication_mode: "strict_review",
         created_by: user.id,
+        primary_guardian_id: user.id,
+        settings: {
+          first_name: data.firstName,
+          last_name: data.lastName,
+          nickname: data.nickname || null,
+          birth_place: data.birthPlace || null,
+          death_place: data.deathPlace || null,
+          guardian_relationship: data.guardianRelationship,
+          guardian_relationship_description: data.guardianRelationshipDescription || null,
+          publication_mode: "strict_review",
+          allow_comments: true,
+          allow_reactions: true,
+          allow_support_messages: true,
+          require_approval_for_posts: true,
+          require_approval_for_media: true,
+        },
       })
       .select("id, slug")
       .single();
@@ -99,51 +112,29 @@ export async function createMemorial(
       console.error("Memorial insert error:", insertError);
       return {
         success: false,
-        error: { code: "INSERT_ERROR", message: "Errore nella creazione del memoriale" },
+        error: {
+          code: "INSERT_ERROR",
+          message: insertError.message || "Errore nella creazione del memoriale",
+        },
       };
     }
 
-    // Create guardian record
+    // Create guardian record (owner / primary)
     const { error: guardianError } = await supabase.from("memorial_guardians").insert({
       memorial_id: memorial.id,
-      profile_id: user.id,
-      role: "guardian",
-      relationship: data.guardianRelationship,
-      relationship_description: data.guardianRelationshipDescription || null,
+      user_id: user.id,
+      role: "owner",
+      is_primary: true,
       can_edit: true,
       can_manage_members: true,
       can_moderate: true,
-      is_active: true,
+      granted_by: user.id,
     });
 
     if (guardianError) {
       console.error("Guardian insert error:", guardianError);
-      // Continue - the memorial was created
+      // Memorial already created — still return success so the user can open it
     }
-
-    // Create default memorial settings
-    const { error: settingsError } = await supabase.from("memorial_settings").insert({
-      memorial_id: memorial.id,
-      allow_comments: true,
-      allow_reactions: true,
-      allow_support_messages: true,
-      require_approval_for_posts: true,
-      require_approval_for_media: true,
-    });
-
-    if (settingsError) {
-      console.error("Settings insert error:", settingsError);
-    }
-
-    // Audit log
-    await supabase.from("audit_events").insert({
-      actor_id: user.id,
-      actor_type: "user",
-      action: "memorial_created",
-      resource_type: "memorial",
-      resource_id: memorial.id,
-      metadata: { slug, name: `${data.firstName} ${data.lastName}` },
-    });
 
     return {
       success: true,
@@ -179,10 +170,9 @@ export async function getMemorialBySlug(
         `
         *,
         memorial_guardians (
-          id, profile_id, role, relationship, relationship_description, can_edit, can_manage_members, can_moderate,
-          profiles:profile_id (id, full_name, display_name, avatar_url)
-        ),
-        memorial_settings (allow_comments, allow_reactions, allow_support_messages)
+          id, user_id, role, is_primary, can_edit, can_manage_members, can_moderate,
+          profiles:user_id (id, display_name, avatar_url)
+        )
       `
       )
       .eq("slug", slug)
@@ -205,11 +195,13 @@ export async function getMemorialBySlug(
 
     // Check access permissions
     const isGuardian = memorial.memorial_guardians?.some(
-      (g: Record<string, unknown>) => g.profile_id === user?.id
+      (g: Record<string, unknown>) => g.user_id === user?.id
     );
+    const isOwner =
+      memorial.created_by === user?.id || memorial.primary_guardian_id === user?.id;
     const isMember = false; // Would need to check memorial_members
 
-    if (memorial.visibility === "private" && !isGuardian && !isMember) {
+    if (memorial.visibility === "private" && !isGuardian && !isOwner && !isMember) {
       return {
         success: false,
         error: { code: "FORBIDDEN", message: "Non hai accesso a questo memoriale" },
@@ -244,41 +236,57 @@ export async function getMemorialBySlug(
       .eq("memorial_id", memorial.id)
       .is("deleted_at", null);
 
+    const settings = (memorial.settings ?? {}) as Record<string, unknown>;
+    const fullName = (memorial.full_name as string) || "";
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName =
+      (settings.first_name as string | undefined) || nameParts[0] || "";
+    const lastName =
+      (settings.last_name as string | undefined) ||
+      (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+
     // Transform guardian info
-    const guardian = memorial.memorial_guardians?.find(
-      (g: Record<string, unknown>) => g.role === "guardian"
-    );
+    const guardian =
+      memorial.memorial_guardians?.find(
+        (g: Record<string, unknown>) => g.is_primary === true || g.role === "owner"
+      ) || memorial.memorial_guardians?.[0];
+
+    const guardianProfile = guardian?.profiles as
+      | { display_name?: string | null; avatar_url?: string | null }
+      | null
+      | undefined;
 
     const transformed: MemorialWithGuardian = {
       id: memorial.id as string,
       slug: memorial.slug as string,
-      firstName: memorial.first_name as string,
-      lastName: memorial.last_name as string,
-      nickname: (memorial.nickname ?? null) as string | null,
+      firstName,
+      lastName,
+      nickname: (settings.nickname ?? null) as string | null,
       birthDate: (memorial.birth_date ?? null) as string | null,
-      birthPlace: (memorial.birth_place ?? null) as string | null,
+      birthPlace: (settings.birth_place ?? null) as string | null,
       deathDate: (memorial.death_date ?? null) as string | null,
-      deathPlace: (memorial.death_place ?? null) as string | null,
+      deathPlace: (settings.death_place ?? null) as string | null,
       biography: (memorial.biography ?? null) as string | null,
-      mainPhotoUrl: (memorial.main_photo_url ?? null) as string | null,
-      coverPhotoUrl: (memorial.cover_photo_url ?? null) as string | null,
+      mainPhotoUrl: (memorial.profile_image_url ?? null) as string | null,
+      coverPhotoUrl: null,
       visibility: memorial.visibility as "public" | "private" | "invitation_only",
       status: memorial.status,
-      publicationMode: memorial.publication_mode,
+      publicationMode:
+        (settings.publication_mode as string | undefined) || "strict_review",
       createdBy: memorial.created_by as string,
-      verifiedAt: (memorial.verified_at ?? null) as string | null,
-      verifiedBy: (memorial.verified_by ?? null) as string | null,
+      verifiedAt: null,
+      verifiedBy: null,
       createdAt: memorial.created_at as string,
       updatedAt: memorial.updated_at as string,
       deletedAt: (memorial.deleted_at ?? null) as string | null,
       guardian: guardian
         ? {
             id: guardian.id as string,
-            profileId: guardian.profile_id as string,
-            fullName: (guardian.profiles?.full_name ?? null) as string | null,
-            displayName: (guardian.profiles?.display_name ?? null) as string | null,
-            avatarUrl: (guardian.profiles?.avatar_url ?? null) as string | null,
-            relationship: guardian.relationship as string,
+            profileId: guardian.user_id as string,
+            fullName: (guardianProfile?.display_name ?? null) as string | null,
+            displayName: (guardianProfile?.display_name ?? null) as string | null,
+            avatarUrl: (guardianProfile?.avatar_url ?? null) as string | null,
+            relationship: (settings.guardian_relationship as string) || "",
           }
         : undefined,
       stats: {
@@ -331,7 +339,7 @@ export async function listMemorials(
     if (query) {
       // Use full-text search if available, otherwise ILIKE
       dbQuery = dbQuery.or(
-        `first_name.ilike.%${query}%,last_name.ilike.%${query}%,biography.ilike.%${query}%`
+        `full_name.ilike.%${query}%,biography.ilike.%${query}%`
       );
     }
 
@@ -344,7 +352,14 @@ export async function listMemorials(
     }
 
     // Sorting
-    const sortColumn = sortBy === "last_name" ? "last_name" : sortBy === "birth_date" ? "birth_date" : "created_at";
+    const sortColumn =
+      sortBy === "last_name"
+        ? "full_name"
+        : sortBy === "birth_date"
+          ? "birth_date"
+          : sortBy === "updated_at"
+            ? "updated_at"
+            : "created_at";
     dbQuery = dbQuery.order(sortColumn, { ascending: sortOrder === "asc" });
 
     // Pagination
@@ -362,29 +377,37 @@ export async function listMemorials(
       };
     }
 
-    const memorials: Memorial[] = (data ?? []).map((m) => ({
-      id: m.id,
-      slug: m.slug,
-      firstName: m.first_name,
-      lastName: m.last_name,
-      nickname: m.nickname,
-      birthDate: m.birth_date,
-      birthPlace: m.birth_place,
-      deathDate: m.death_date,
-      deathPlace: m.death_place,
-      biography: m.biography,
-      mainPhotoUrl: m.main_photo_url,
-      coverPhotoUrl: m.cover_photo_url,
-      visibility: m.visibility,
-      status: m.status,
-      publicationMode: m.publication_mode,
-      createdBy: m.created_by,
-      verifiedAt: m.verified_at,
-      verifiedBy: m.verified_by,
-      createdAt: m.created_at,
-      updatedAt: m.updated_at,
-      deletedAt: m.deleted_at,
-    }));
+    const memorials: Memorial[] = (data ?? []).map((m) => {
+      const settings = (m.settings ?? {}) as Record<string, unknown>;
+      const fullName = (m.full_name as string) || "";
+      const parts = fullName.trim().split(/\s+/);
+      return {
+        id: m.id,
+        slug: m.slug,
+        firstName: (settings.first_name as string) || parts[0] || "",
+        lastName:
+          (settings.last_name as string) ||
+          (parts.length > 1 ? parts.slice(1).join(" ") : ""),
+        nickname: (settings.nickname as string | null) ?? null,
+        birthDate: m.birth_date,
+        birthPlace: (settings.birth_place as string | null) ?? null,
+        deathDate: m.death_date,
+        deathPlace: (settings.death_place as string | null) ?? null,
+        biography: m.biography,
+        mainPhotoUrl: m.profile_image_url,
+        coverPhotoUrl: null,
+        visibility: m.visibility,
+        status: m.status,
+        publicationMode:
+          (settings.publication_mode as string) || "strict_review",
+        createdBy: m.created_by,
+        verifiedAt: null,
+        verifiedBy: null,
+        createdAt: m.created_at,
+        updatedAt: m.updated_at,
+        deletedAt: m.deleted_at,
+      };
+    });
 
     const total = count ?? 0;
 
@@ -444,9 +467,8 @@ export async function updateMemorial(
       .from("memorial_guardians")
       .select("id")
       .eq("memorial_id", result.data.id)
-      .eq("profile_id", user.id)
-      .eq("is_active", true)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     if (!guardian) {
       return {
@@ -457,20 +479,43 @@ export async function updateMemorial(
 
     const { id, ...updateData } = result.data;
 
-    // Build update object
-    const update: Record<string, unknown> = {};
-    if (updateData.firstName) update.first_name = updateData.firstName;
-    if (updateData.lastName) update.last_name = updateData.lastName;
-    if (updateData.nickname !== undefined) update.nickname = updateData.nickname;
+    // Load current settings to merge
+    const { data: current } = await supabase
+      .from("memorials")
+      .select("settings, full_name")
+      .eq("id", id)
+      .single();
+
+    const currentSettings = (current?.settings ?? {}) as Record<string, unknown>;
+    const nextSettings = { ...currentSettings };
+
+    const update: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (updateData.firstName) nextSettings.first_name = updateData.firstName;
+    if (updateData.lastName) nextSettings.last_name = updateData.lastName;
+    if (updateData.nickname !== undefined) nextSettings.nickname = updateData.nickname;
+    if (updateData.birthPlace !== undefined) nextSettings.birth_place = updateData.birthPlace;
+    if (updateData.deathPlace !== undefined) nextSettings.death_place = updateData.deathPlace;
+    if (updateData.publicationMode)
+      nextSettings.publication_mode = updateData.publicationMode;
+
+    if (updateData.firstName || updateData.lastName) {
+      const first =
+        (nextSettings.first_name as string) ||
+        String(current?.full_name ?? "").split(/\s+/)[0] ||
+        "";
+      const last = (nextSettings.last_name as string) || "";
+      update.full_name = `${first} ${last}`.trim();
+    }
+
     if (updateData.birthDate !== undefined) update.birth_date = updateData.birthDate;
-    if (updateData.birthPlace !== undefined) update.birth_place = updateData.birthPlace;
     if (updateData.deathDate !== undefined) update.death_date = updateData.deathDate;
-    if (updateData.deathPlace !== undefined) update.death_place = updateData.deathPlace;
     if (updateData.biography !== undefined) update.biography = updateData.biography;
     if (updateData.visibility) update.visibility = updateData.visibility;
     if (updateData.status) update.status = updateData.status;
-    if (updateData.publicationMode) update.publication_mode = updateData.publicationMode;
-    update.updated_at = new Date().toISOString();
+    update.settings = nextSettings;
 
     const { error } = await supabase.from("memorials").update(update).eq("id", id);
 
@@ -512,16 +557,37 @@ export async function checkGuardianStatus(
       .from("memorial_guardians")
       .select("role, can_edit, can_moderate")
       .eq("memorial_id", memorialId)
-      .eq("profile_id", user.id)
-      .eq("is_active", true)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    // Also treat primary_guardian / creator as guardian
+    let isGuardian = !!guardian;
+    let canEdit = guardian?.can_edit ?? false;
+    let canModerate = guardian?.can_moderate ?? false;
+
+    if (!isGuardian) {
+      const { data: memorial } = await supabase
+        .from("memorials")
+        .select("created_by, primary_guardian_id")
+        .eq("id", memorialId)
+        .maybeSingle();
+
+      if (
+        memorial &&
+        (memorial.created_by === user.id || memorial.primary_guardian_id === user.id)
+      ) {
+        isGuardian = true;
+        canEdit = true;
+        canModerate = true;
+      }
+    }
 
     return {
       success: true,
       data: {
-        isGuardian: !!guardian,
-        canEdit: guardian?.can_edit ?? false,
-        canModerate: guardian?.can_moderate ?? false,
+        isGuardian,
+        canEdit,
+        canModerate,
       },
     };
   } catch (error) {

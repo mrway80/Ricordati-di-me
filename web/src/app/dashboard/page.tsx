@@ -28,12 +28,11 @@ export default async function DashboardPage() {
     .from("memorial_guardians")
     .select(
       `
-      id, role, relationship, memorial_id,
-      memorials:memorial_id (id, slug, first_name, last_name, nickname, main_photo_url, status, visibility, created_at)
+      id, role, memorial_id,
+      memorials:memorial_id (id, slug, full_name, profile_image_url, status, visibility, created_at, settings)
     `
     )
-    .eq("profile_id", user.id)
-    .eq("is_active", true)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   // Get memorials where user is member
@@ -41,19 +40,19 @@ export default async function DashboardPage() {
     .from("memorial_members")
     .select(
       `
-      id, role, status,
-      memorials:memorial_id (id, slug, first_name, last_name, nickname, main_photo_url, status, visibility)
+      id, status, relationship,
+      memorials:memorial_id (id, slug, full_name, profile_image_url, status, visibility, settings)
     `
     )
-    .eq("profile_id", user.id)
+    .eq("user_id", user.id)
     .eq("status", "approved");
 
-  // Get pending invitations
+  // Get pending invitations by email
   const { data: invitations } = await supabase
     .from("memorial_invitations")
     .select("*")
-    .eq("invited_email", user.email)
-    .eq("status", "pending");
+    .eq("email", user.email)
+    .is("used_at", null);
 
   const guardianMemorials = guardianships ?? [];
   const memberMemorials = memberships ?? [];
@@ -137,16 +136,23 @@ export default async function DashboardPage() {
                   const m = g.memorials as Array<Record<string, unknown>> | null;
                   const memorial = Array.isArray(m) ? m[0] : (m as Record<string, unknown> | null);
                   if (!memorial) return null;
+                  const settings = (memorial.settings ?? {}) as Record<string, unknown>;
+                  const fullName = (memorial.full_name as string) || "";
+                  const parts = fullName.trim().split(/\s+/);
+                  const firstName = (settings.first_name as string) || parts[0] || "";
+                  const lastName =
+                    (settings.last_name as string) ||
+                    (parts.length > 1 ? parts.slice(1).join(" ") : "");
                   return (
                     <MemorialCard
                       key={g.id as string}
                       slug={(memorial.slug as string) ?? ""}
-                      firstName={(memorial.first_name as string) ?? ""}
-                      lastName={(memorial.last_name as string) ?? ""}
-                      nickname={(memorial.nickname as string | null) ?? null}
-                      photoUrl={(memorial.main_photo_url as string | null) ?? null}
+                      firstName={firstName}
+                      lastName={lastName}
+                      nickname={(settings.nickname as string | null) ?? null}
+                      photoUrl={(memorial.profile_image_url as string | null) ?? null}
                       role={g.role as string}
-                      relationship={g.relationship as string}
+                      relationship={(settings.guardian_relationship as string) ?? null}
                     />
                   );
                 })}
@@ -166,16 +172,23 @@ export default async function DashboardPage() {
                   const mem = m.memorials as Array<Record<string, unknown>> | null;
                   const memorial = Array.isArray(mem) ? mem[0] : (mem as Record<string, unknown> | null);
                   if (!memorial) return null;
+                  const settings = (memorial.settings ?? {}) as Record<string, unknown>;
+                  const fullName = (memorial.full_name as string) || "";
+                  const parts = fullName.trim().split(/\s+/);
+                  const firstName = (settings.first_name as string) || parts[0] || "";
+                  const lastName =
+                    (settings.last_name as string) ||
+                    (parts.length > 1 ? parts.slice(1).join(" ") : "");
                   return (
                     <MemorialCard
                       key={m.id as string}
                       slug={(memorial.slug as string) ?? ""}
-                      firstName={(memorial.first_name as string) ?? ""}
-                      lastName={(memorial.last_name as string) ?? ""}
-                      nickname={(memorial.nickname as string | null) ?? null}
-                      photoUrl={(memorial.main_photo_url as string | null) ?? null}
-                      role={m.role as string}
-                      relationship={null}
+                      firstName={firstName}
+                      lastName={lastName}
+                      nickname={(settings.nickname as string | null) ?? null}
+                      photoUrl={(memorial.profile_image_url as string | null) ?? null}
+                      role="membro"
+                      relationship={(m.relationship as string | null) ?? null}
                     />
                   );
                 })}
@@ -193,10 +206,10 @@ export default async function DashboardPage() {
                     <CardContent className="py-4 flex items-center justify-between">
                       <div>
                         <p className="font-medium">
-                          Invito a partecipare al memoriale di {inv.memorial_name || "una persona cara"}
+                          Invito a partecipare a un memoriale
                         </p>
                         <p className="text-sm text-foreground-muted">
-                          Ruolo: {inv.role as string}
+                          Ruolo: {(inv.role as string) || "membro"}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -289,7 +302,11 @@ function MemorialCard({
               </h3>
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize">
-                  {role === "guardian" ? "Custode" : role === "co_guardian" ? "Co-Custode" : role}
+                  {role === "owner" || role === "guardian"
+                    ? "Custode"
+                    : role === "co_guardian"
+                      ? "Co-Custode"
+                      : role}
                 </span>
                 {relationship && (
                   <span className="text-xs text-foreground-muted">{relationship}</span>

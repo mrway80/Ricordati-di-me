@@ -25,6 +25,10 @@ export default function CreateMemorialPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
+  const [guardianRelationship, setGuardianRelationship] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "private" | "invitation_only">(
+    "public"
+  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,6 +37,12 @@ export default function CreateMemorialPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
+
+    if (!guardianRelationship) {
+      setFieldErrors({ guardianRelationship: ["Indica il tuo legame con la persona"] });
+      setLoading(false);
+      return;
+    }
 
     const result = await createMemorial({
       firstName: formData.get("firstName") as string,
@@ -43,8 +53,8 @@ export default function CreateMemorialPage() {
       deathDate: (formData.get("deathDate") as string) || undefined,
       deathPlace: (formData.get("deathPlace") as string) || undefined,
       biography: (formData.get("biography") as string) || undefined,
-      visibility: (formData.get("visibility") as "public" | "private" | "invitation_only") || "public",
-      guardianRelationship: formData.get("guardianRelationship") as string,
+      visibility,
+      guardianRelationship,
       guardianRelationshipDescription:
         (formData.get("guardianRelationshipDescription") as string) || undefined,
     });
@@ -209,7 +219,12 @@ export default function CreateMemorialPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="guardianRelationship">Tipo di legame *</Label>
-                <Select name="guardianRelationship" required>
+                <Select
+                  value={guardianRelationship}
+                  onValueChange={(value) => {
+                    if (value != null) setGuardianRelationship(String(value));
+                  }}
+                >
                   <SelectTrigger className={fieldErrors.guardianRelationship ? "border-error" : ""}>
                     <SelectValue placeholder="Seleziona il tuo legame" />
                   </SelectTrigger>
@@ -267,7 +282,18 @@ export default function CreateMemorialPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <Select name="visibility" defaultValue="public">
+                <Select
+                  value={visibility}
+                  onValueChange={(value) => {
+                    if (
+                      value === "public" ||
+                      value === "private" ||
+                      value === "invitation_only"
+                    ) {
+                      setVisibility(value);
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
