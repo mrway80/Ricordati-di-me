@@ -1,8 +1,10 @@
 # Deployment Guide — Ricordati di Te
 
-> **Versione**: 1.0  
-> **Data**: 2025-06-01  
+> **Versione**: 1.1  
+> **Data**: 2026-07-15  
 > **Ambiente Target**: Vercel + Supabase  
+>
+> **Nota Vercel**: Root Directory del progetto = `web` (app Next.js nella cartella `web/`).
 
 ---
 
