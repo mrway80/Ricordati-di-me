@@ -140,3 +140,18 @@ CREATE POLICY "guardians_select_members"
         AND m.deleted_at IS NULL
     )
   );
+
+-- Trigger that auto-creates memorial_settings on memorial insert must bypass RLS
+CREATE OR REPLACE FUNCTION public.auto_create_memorial_settings()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO memorial_settings (memorial_id)
+  VALUES (NEW.id)
+  ON CONFLICT (memorial_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
