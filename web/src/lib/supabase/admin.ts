@@ -7,8 +7,8 @@ import type { Database } from "@/types/database";
  * Use only in: server actions, route handlers, background jobs, moderation tools.
  */
 export function createAdminClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 
   if (!serviceRoleKey || !supabaseUrl) {
     throw new Error(

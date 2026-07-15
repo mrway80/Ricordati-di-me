@@ -14,6 +14,18 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
 });
 
+function getMetadataBase(): URL {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (raw) {
+    try {
+      return new URL(raw);
+    } catch {
+      // fall through to default
+    }
+  }
+  return new URL("https://ricordati-di-me.vercel.app");
+}
+
 export const metadata: Metadata = {
   title: {
     default: "Ricordati di Te — Un luogo per ricordare",
@@ -31,9 +43,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Ricordati di Te" }],
   creator: "Ricordati di Te",
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://ricordatidite.it"
-  ),
+  metadataBase: getMetadataBase(),
   openGraph: {
     type: "website",
     locale: "it_IT",
