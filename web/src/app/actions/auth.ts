@@ -16,12 +16,15 @@ export async function signUp(input: SignUpInput): Promise<ActionResult<{ userId:
     // Validate input
     const result = signUpSchema.safeParse(input);
     if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      const firstMessage =
+        Object.values(fieldErrors).flat().find(Boolean) ?? "Dati di input non validi";
       return {
         success: false,
         error: {
           code: "VALIDATION_ERROR",
-          message: "Dati di input non validi",
-          details: result.error.flatten().fieldErrors,
+          message: firstMessage,
+          details: fieldErrors,
         },
       };
     }

@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
@@ -27,10 +28,10 @@ export default function RegisterPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const password = formData.get("password") as string;
+    const pwd = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
-    if (password !== confirmPassword) {
+    if (pwd !== confirmPassword) {
       setFieldErrors({ confirmPassword: ["Le password non coincidono"] });
       setLoading(false);
       return;
@@ -44,7 +45,7 @@ export default function RegisterPage() {
 
     const result = await signUp({
       email: formData.get("email") as string,
-      password,
+      password: pwd,
       confirmPassword,
       fullName: formData.get("fullName") as string,
       displayName: (formData.get("displayName") as string) || undefined,
@@ -144,10 +145,12 @@ export default function RegisterPage() {
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Minimo 12 caratteri"
+                placeholder="Es. CiaoMond0!"
                 required
                 minLength={12}
                 maxLength={128}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className={fieldErrors.password ? "border-error pr-10" : "pr-10"}
               />
               <button
@@ -161,7 +164,7 @@ export default function RegisterPage() {
             {fieldErrors.password && (
               <p className="text-xs text-error">{fieldErrors.password[0]}</p>
             )}
-            <PasswordRequirements />
+            <PasswordRequirements password={password} />
           </div>
 
           <div className="space-y-2">
@@ -227,31 +230,27 @@ export default function RegisterPage() {
   );
 }
 
-function PasswordRequirements() {
+function PasswordRequirements({ password }: { password: string }) {
+  const checks = [
+    { ok: password.length >= 12, label: "Almeno 12 caratteri" },
+    { ok: /[A-Z]/.test(password), label: "Una lettera maiuscola" },
+    { ok: /[a-z]/.test(password), label: "Una lettera minuscola" },
+    { ok: /[0-9]/.test(password), label: "Un numero" },
+    { ok: /[^A-Za-z0-9]/.test(password), label: "Un carattere speciale (es. ! @ # $ %)" },
+  ];
+
   return (
     <div className="text-xs text-foreground-subtle space-y-1 pt-1">
       <p className="font-medium">La password deve contenere:</p>
       <ul className="space-y-0.5 pl-1">
-        <li className="flex items-center gap-1.5">
-          <CheckCircle className="h-3 w-3" />
-          Almeno 12 caratteri
-        </li>
-        <li className="flex items-center gap-1.5">
-          <CheckCircle className="h-3 w-3" />
-          Una lettera maiuscola
-        </li>
-        <li className="flex items-center gap-1.5">
-          <CheckCircle className="h-3 w-3" />
-          Una lettera minuscola
-        </li>
-        <li className="flex items-center gap-1.5">
-          <CheckCircle className="h-3 w-3" />
-          Un numero
-        </li>
-        <li className="flex items-center gap-1.5">
-          <CheckCircle className="h-3 w-3" />
-          Un carattere speciale
-        </li>
+        {checks.map((check) => (
+          <li key={check.label} className="flex items-center gap-1.5">
+            <CheckCircle
+              className={`h-3 w-3 ${check.ok ? "text-primary" : "text-foreground-subtle/40"}`}
+            />
+            <span className={check.ok ? "text-foreground" : undefined}>{check.label}</span>
+          </li>
+        ))}
       </ul>
     </div>
   );

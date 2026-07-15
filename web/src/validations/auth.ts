@@ -11,9 +11,12 @@ export const signUpSchema = z
       .string()
       .min(12, "La password deve essere di almeno 12 caratteri")
       .max(128, "Password troppo lunga")
+      .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
+      .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
+      .regex(/[0-9]/, "La password deve contenere almeno un numero")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-        "La password deve contenere almeno una maiuscola, una minuscola, un numero e un carattere speciale"
+        /[^A-Za-z0-9]/,
+        "La password deve contenere almeno un carattere speciale (es. ! @ # $ %)"
       ),
     confirmPassword: z.string().min(1, "Conferma la password"),
     fullName: z
@@ -56,9 +59,12 @@ export const resetPasswordSchema = z
       .string()
       .min(12, "La password deve essere di almeno 12 caratteri")
       .max(128)
+      .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
+      .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
+      .regex(/[0-9]/, "La password deve contenere almeno un numero")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-        "La password deve contenere almeno una maiuscola, una minuscola, un numero e un carattere speciale"
+        /[^A-Za-z0-9]/,
+        "La password deve contenere almeno un carattere speciale (es. ! @ # $ %)"
       ),
     confirmPassword: z.string().min(1, "Conferma la password"),
   })
