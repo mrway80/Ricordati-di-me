@@ -63,6 +63,14 @@
 }
 
 @layer components {
+  .memorial-title {
+    @apply font-serif font-semibold tracking-tight text-foreground;
+  }
+
+  .memorial-subtitle {
+    @apply text-muted-foreground leading-relaxed;
+  }
+
   /* Memorial card styles */
   .memorial-card {
     @apply bg-white rounded-xl border border-border shadow-soft transition-shadow duration-300;
