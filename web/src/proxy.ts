@@ -21,7 +21,7 @@ const alwaysAccessible = [
   "/fonts",
 ];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  // Without Supabase env vars, skip auth middleware so the site still loads
+  // Without Supabase env vars, skip auth proxy so the site still loads
   if (!supabaseUrl || !supabaseAnonKey) {
     return response;
   }
@@ -90,7 +90,7 @@ export async function middleware(request: NextRequest) {
   // Check memorial access permissions for /memoriale/[slug]/* routes
   if (pathname.startsWith("/memoriale/") && !pathname.startsWith("/memoriale/crea")) {
     // Memorial pages handle their own access control via RLS and server components
-    // This middleware just ensures auth state is refreshed
+    // This proxy just ensures auth state is refreshed
     return response;
   }
 
