@@ -21,14 +21,20 @@ const alwaysAccessible = [
   "/fonts",
 ];
 
-export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({
+function nextWithPathname(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+  return NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
+}
 
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  let response = nextWithPathname(request);
 
   // Check if route is always accessible early
   if (alwaysAccessible.some((route) => pathname.startsWith(route))) {
@@ -50,16 +56,12 @@ export async function proxy(request: NextRequest) {
       },
       set(name: string, value: string, options: CookieOptions) {
         request.cookies.set({ name, value, ...options });
-        response = NextResponse.next({
-          request: { headers: request.headers },
-        });
+        response = nextWithPathname(request);
         response.cookies.set({ name, value, ...options });
       },
       remove(name: string, options: CookieOptions) {
         request.cookies.set({ name, value: "", ...options });
-        response = NextResponse.next({
-          request: { headers: request.headers },
-        });
+        response = nextWithPathname(request);
         response.cookies.set({ name, value: "", ...options });
       },
     },

@@ -101,6 +101,63 @@
     @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold;
     @apply bg-primary/10 text-primary-700 border border-primary/20;
   }
+
+  /* Memorial storytelling theme (public memorial page) */
+  .memorial-story {
+    --ms-cream: #fdfaf2;
+    --ms-cream-deep: #f2ead9;
+    --ms-ink: #3a2f22;
+    --ms-ink-soft: #463a2b;
+    --ms-muted: #a3947a;
+    --ms-gold: #b7a680;
+    --ms-olive: #7c8a63;
+    --ms-earth: #302a20;
+    --ms-earth-mid: #6f5c46;
+    --ms-border: #efe4d1;
+    background: var(--ms-cream);
+    color: var(--ms-ink);
+    font-family: var(--font-instrument), system-ui, sans-serif;
+  }
+
+  .memorial-story .ms-serif {
+    font-family: var(--font-newsreader), Georgia, serif;
+  }
+
+  .memorial-story .ms-mono {
+    font-family: var(--font-jetbrains), ui-monospace, monospace;
+  }
+
+  .memorial-story .ms-eyebrow {
+    font-family: var(--font-jetbrains), ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ms-muted);
+  }
+
+  .memorial-story .ms-section {
+    padding: clamp(3.5rem, 8vw, 7rem) clamp(1rem, 4vw, 2rem);
+  }
+
+  .memorial-story .ms-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    min-height: 3.25rem;
+    padding: 0 1.6rem;
+    border-radius: 15px;
+    background: var(--ms-earth-mid);
+    color: var(--ms-cream);
+    font-weight: 600;
+    font-size: 15.5px;
+    box-shadow: 0 8px 22px rgba(90, 72, 50, 0.28);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .memorial-story .ms-cta:hover {
+    background: #5f4d3a;
+    transform: translateY(-1px);
+  }
 }
 
 @layer utilities {

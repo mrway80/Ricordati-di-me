@@ -1,17 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Instrument_Sans, JetBrains_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const instrument = Instrument_Sans({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-instrument",
 });
 
-const playfair = Playfair_Display({
+const newsreader = Newsreader({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-playfair",
+  variable: "--font-newsreader",
+  style: ["normal", "italic"],
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-jetbrains",
 });
 
 function getMetadataBase(): URL {
@@ -75,8 +82,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FDF8F3" },
-    { media: "(prefers-color-scheme: dark)", color: "#2A2420" },
+    { media: "(prefers-color-scheme: light)", color: "#fdfaf2" },
+    { media: "(prefers-color-scheme: dark)", color: "#302a20" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -88,8 +95,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="it" className={`${inter.variable} ${playfair.variable}`}>
-      <body className="min-h-screen bg-background text-foreground antialiased">
+    <html
+      lang="it"
+      className={`${instrument.variable} ${newsreader.variable} ${jetbrains.variable}`}
+    >
+      <body className="min-h-screen bg-background text-foreground antialiased font-sans">
         {children}
       </body>
     </html>

@@ -19,6 +19,8 @@ interface MemorialOnboardingProps {
   gaps: OnboardingGaps;
   forceShow?: boolean;
   locale?: Locale;
+  /** Soft panel styled for the public storytelling memorial page */
+  variant?: "default" | "story";
 }
 
 const STORAGE_PREFIX = "memorial-onboarding-dismissed:";
@@ -28,8 +30,10 @@ export function MemorialOnboarding({
   gaps,
   forceShow = false,
   locale = "it",
+  variant = "default",
 }: MemorialOnboardingProps) {
   const m = getMessages(locale);
+  const story = variant === "story";
   const [dismissed, setDismissed] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -51,7 +55,7 @@ export function MemorialOnboarding({
         title: t(m, "onboarding.photoTitle"),
         hint: t(m, "onboarding.photoHint"),
         cta: t(m, "onboarding.photoCta"),
-        href: `/memoriale/${slug}?tab=foto`,
+        href: `/memoriale/${slug}#momenti`,
         icon: Camera,
       },
       {
@@ -101,23 +105,51 @@ export function MemorialOnboarding({
 
   return (
     <section
-      className="mb-8 rounded-2xl border border-primary/20 bg-primary/[0.04] p-4 sm:p-5"
+      className={cn(
+        "mb-8 rounded-2xl p-4 sm:p-5",
+        story
+          ? "border border-[color:var(--ms-border)] bg-[color:var(--ms-cream)]/90 shadow-[0_10px_30px_rgba(48,42,32,0.06)]"
+          : "border border-primary/20 bg-primary/[0.04]"
+      )}
       aria-labelledby="onboarding-title"
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="min-w-0">
-          <h2 id="onboarding-title" className="font-display text-lg font-semibold">
+          <h2
+            id="onboarding-title"
+            className={cn(
+              "font-display text-lg font-semibold",
+              story && "ms-serif font-light text-[color:var(--ms-ink)] text-2xl"
+            )}
+          >
             {t(m, "onboarding.title")}
           </h2>
-          <p className="text-sm text-foreground-muted mt-0.5">{t(m, "onboarding.subtitle")}</p>
-          <p className="text-xs text-foreground-subtle mt-2">
+          <p
+            className={cn(
+              "text-sm mt-0.5",
+              story ? "text-[#6b5d4b]" : "text-foreground-muted"
+            )}
+          >
+            {t(m, "onboarding.subtitle")}
+          </p>
+          <p
+            className={cn(
+              "text-xs mt-2",
+              story ? "ms-mono tracking-[0.12em] uppercase text-[color:var(--ms-muted)]" : "text-foreground-subtle"
+            )}
+          >
             {t(m, "onboarding.progress", { done, total })}
           </p>
         </div>
         <button
           type="button"
           onClick={dismiss}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-full text-foreground-muted hover:bg-muted hover:text-foreground shrink-0"
+          className={cn(
+            "min-h-11 min-w-11 inline-flex items-center justify-center rounded-full shrink-0",
+            story
+              ? "text-[color:var(--ms-muted)] hover:bg-[#efe4d1] hover:text-[color:var(--ms-ink)]"
+              : "text-foreground-muted hover:bg-muted hover:text-foreground"
+          )}
           aria-label={t(m, "onboarding.dismiss")}
         >
           <X className="h-5 w-5" />
@@ -125,14 +157,17 @@ export function MemorialOnboarding({
       </div>
 
       <div
-        className="h-1.5 w-full rounded-full bg-border overflow-hidden mb-4"
+        className={cn(
+          "h-1.5 w-full rounded-full overflow-hidden mb-4",
+          story ? "bg-[#efe4d1]" : "bg-border"
+        )}
         role="progressbar"
         aria-valuenow={done}
         aria-valuemin={0}
         aria-valuemax={total}
       >
         <div
-          className="h-full bg-primary transition-all"
+          className={cn("h-full transition-all", story ? "bg-[color:var(--ms-olive)]" : "bg-primary")}
           style={{ width: `${(done / total) * 100}%` }}
         />
       </div>
@@ -145,20 +180,39 @@ export function MemorialOnboarding({
               <Link
                 href={task.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl border border-border bg-background",
-                  "p-3 sm:p-4 min-h-[4.5rem] hover:border-primary/30 transition-colors"
+                  "flex items-center gap-3 rounded-xl p-3 sm:p-4 min-h-[4.5rem] transition-colors",
+                  story
+                    ? "border border-[color:var(--ms-border)] bg-[#faf6ec] hover:border-[color:var(--ms-gold)]"
+                    : "border border-border bg-background hover:border-primary/30"
                 )}
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <span
+                  className={cn(
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+                    story
+                      ? "bg-[#e8dcc8] text-[color:var(--ms-earth)]"
+                      : "bg-primary/10 text-primary"
+                  )}
+                >
                   <Icon className="h-5 w-5" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium text-sm sm:text-base">{task.title}</span>
-                  <span className="block text-xs sm:text-sm text-foreground-muted mt-0.5 line-clamp-2">
+                  <span
+                    className={cn(
+                      "block text-xs sm:text-sm mt-0.5 line-clamp-2",
+                      story ? "text-[#6b5d4b]" : "text-foreground-muted"
+                    )}
+                  >
                     {task.hint}
                   </span>
                 </span>
-                <span className="text-sm font-medium text-primary shrink-0 hidden xs:inline sm:inline">
+                <span
+                  className={cn(
+                    "text-sm font-medium shrink-0 hidden sm:inline",
+                    story ? "text-[color:var(--ms-earth-mid)]" : "text-primary"
+                  )}
+                >
                   {task.cta}
                 </span>
               </Link>
@@ -168,8 +222,15 @@ export function MemorialOnboarding({
       </ul>
 
       {done > 0 && (
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-foreground-subtle">
-          <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+        <p
+          className={cn(
+            "mt-3 flex items-center gap-1.5 text-xs",
+            story ? "text-[color:var(--ms-muted)]" : "text-foreground-subtle"
+          )}
+        >
+          <CheckCircle2
+            className={cn("h-3.5 w-3.5", story ? "text-[color:var(--ms-olive)]" : "text-primary")}
+          />
           {t(m, "onboarding.progress", { done, total })}
         </p>
       )}
